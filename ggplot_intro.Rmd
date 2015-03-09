@@ -25,38 +25,101 @@ output: html_document
 ###Data:  
 + Always in a data.frame form! 
 
+###Many people have published on how to use ggplot  
++ [R Cookbook](http://www.cookbook-r.com/Graphs/)  
++ [Beautiful Plotting with ggplot](http://zevross.com/blog/2014/08/04/beautiful-plotting-in-r-a-ggplot2-cheatsheet-3/)  
++ [ggplot Handout from Hadley Wickham](http://www.ceb-institute.org/bbs/wp-content/uploads/2011/09/handout_ggplot2.pdf)  
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+###Today:  
++ **Barplots with ggplot:** very simple!  Can make it look like base R
++ **Scatterplot:**  Legends and coloring of points with ggplots "scales"  
++ **Heatmap:**  Faceting and Gradient Coloring  
++ **Multiplotting with ggplot:**  gridExtra
 
-```{r load packages, echo= FALSE, message=FALSE}
+
+###Load packages
+```{r load packages, echo= TRUE, message = FALSE}
 library(ggplot2)
-library(vegan)
-library(plyr)
-library(stats)
-library(data.table)
-library(reshape2)
-library(reshape)
-library(sciplot)
-library(gtable)
-library(gridExtra)
-library(data.table)
+library(gridExtra) # Allows us to plot multiple plots together in one graph
+```
+
+
+
+```{r relative abundance, message=FALSE, echo = TRUE, warning = FALSE, results ='hide', fig.height=9, fig.align='center', fig.width = 8}
+#Load Data
+relabund_data <- read.table("relabund_data", sep = "\t", header = T)
+
+#Order by the SeqAbundance
+relabund_data <- relabund_data[order(relabund_data$PercentPhy),]
+relabund_data$Phylum <- factor(relabund_data$Phylum, levels = relabund_data$Phylum[order(relabund_data$PercentPhy)])
+relabund_data <- subset(relabund_data, Phylum != "unclassified" & Phylum != "Synergistetes" & Phylum != "RsaHF231" & Phylum != "FGL7S" & Phylum != "JTB23")
+phys <- as.character(relabund_data$Phylum)
+
+#Only plot Phylum that are more than 1%
+abund <- subset(relabund_data,PercentPhy > 0.01)
+
+#Let's look at the data
+head(relabund_data)
+
+#Making the Relative Abundance plot 
+abund_plot <- ggplot(abund, aes(x = Phylum, y=PercentPhy))  +
+  geom_bar(stat="identity", position=position_dodge(),  fill = "magenta4", colour = "black") +
+    # Here stat="identity" is plotting a value, Default is stat="bin" which is count data 
+  theme_bw() + ggtitle("Phyla Above 1% in All Samples") +
+  xlab("Phylum") + ylab("Mean Relative Abundance (%)") +
+  geom_errorbar(aes(ymin = PercentPhy -se, ymax = PercentPhy +se), width = 0.25) + coord_flip() +
+    ### Here is where we set all of axis and plot themes for pretty plotting
+  theme(axis.title.x = element_text(face="bold", size=16),
+        axis.text.x = element_text(angle=0, colour = "black", size=14),
+        axis.text.y = element_text(colour = "black", size=14),
+        axis.title.y = element_text(face="bold", size=16),
+        plot.title = element_text(face="bold", size = 20),
+        legend.title = element_text(size=12, face="bold"),
+        legend.text = element_text(size = 12),
+        legend.position="none"); abund_plot
+ 
+# We can overwrite old preferences 
+abund_plot + theme_grey()
+
+# Same asethetic as base R
+abund_plot + theme_classic()
+
 ```
 
 
 
 
-
-
-```{r}
+```{r nmds, message=FALSE, echo = TRUE, warning = FALSE, results ='hide', fig.height=8, fig.align='center', fig.width = 9}
+#Load Data
 nmds_data <- read.delim("NMDS_data", header = TRUE)
 
+#Let's look at the data
+head(nmds_data)
+  
+### TROPHIC STATE:  Combine Mesotrophic and Eutrophic
+nmds_data$trophicstate[nmds_data$trophicstate == "Mesotrophic"] <- "Eutrophic"
+
+ggplot(nmds_data, aes(x = MDS1,y = MDS2, color = trophicstate)) +
+  xlab("NMDS1") + ylab("NMDS2") + scale_y_continuous(breaks=seq(-1, 1, 0.25)) + # Ticks from 0-10, every .25
+  scale_x_continuous(breaks=seq(-1, 15, 0.5)) +
+  annotate("text", label = "A", x = -0.7, y = 0.4, size = 14, colour = "black", face = "bold") +
+  annotate("text", label = "Stress = 0.17", x = 0.60, y = 0.4, size = 6, colour = "black") +
+  geom_point(size= 6, alpha=0.9) + theme_bw() +
+  scale_color_manual(name = "Trophic State", labels = c("Eutrophic + Mesotrophic", "Oligotrophic", "Mixed"), values = c("deeppink", "turquoise3", "goldenrod")) +
+  theme(axis.text.x = element_text(colour="black", vjust=0.5, size=14), 
+        axis.text.y = element_text(colour="black", vjust=0.5, size=14),
+        axis.title.x = element_text(face="bold", size=16),
+        axis.title.y = element_text(face="bold", size=16),
+        legend.title = element_text(size=12, face="bold"),
+        legend.text = element_text(size = 12),
+        legend.justification=c(1,0), legend.position=c(1.01, -0.01))
+
 ## NMDS colored by quadrant 
-ggplot(nmds_data, aes(MDS1,MDS2, color = quadrant, shape = quadrant)) +
+ggplot(nmds_data, aes(x = MDS1,y = MDS2, color = quadrant, shape = quadrant)) +
   xlab("NMDS1") + ylab("NMDS2") + scale_y_continuous(breaks=seq(-1, 1, 0.25)) + # Ticks from 0-10, every .25
   scale_x_continuous(breaks=seq(-1, 15, 0.5)) + # Ticks from 0-10, every .25
-  annotate("text", label = "A", x = -0.7, y = 0.4, size = 14, colour = "black", face = "bold") +
+  annotate("text", label = "B", x = -0.7, y = 0.4, size = 14, colour = "black", face = "bold") +
   annotate("text", label = "Stress = 0.17", x = 0.60, y = 0.4, size = 6, colour = "black") +
   geom_point(size= 6, alpha=0.9) + theme_bw() +
   scale_color_manual(name = "Habitat", breaks=c("Free Top", "Free Mixed",  "Free Bottom", "Particle Top", "Particle Mixed", "Particle Bottom"),
@@ -71,35 +134,22 @@ ggplot(nmds_data, aes(MDS1,MDS2, color = quadrant, shape = quadrant)) +
         axis.title.y = element_text(face="bold", size=16),
         legend.title = element_text(size=12, face="bold"),
         legend.text = element_text(size = 12),
-        legend.justification=c(1,0), legend.position=c(1.01, -0.01))
-  
-  
-### TROPHIC STATE:  Combine Mesotrophic and Eutrophic
-nmds_data$trophicstate[nmds_data$trophicstate == "Mesotrophic"] <- "Eutrophic"
-
-ggplot(nmds_data, aes(MDS1,MDS2, color = trophicstate)) +
-  xlab("NMDS1") + ylab("NMDS2") + scale_y_continuous(breaks=seq(-1, 1, 0.25)) + # Ticks from 0-10, every .25
-  scale_x_continuous(breaks=seq(-1, 15, 0.5)) +
-  annotate("text", label = "B", x = -0.7, y = 0.4, size = 14, colour = "black", face = "bold") +
-  annotate("text", label = "Stress = 0.17", x = 0.60, y = 0.4, size = 6, colour = "black") +
-  geom_point(size= 6, alpha=0.9) + theme_bw() +
-  scale_color_manual(name = "Trophic State", labels = c("Eutrophic + Mesotrophic", "Oligotrophic", "Mixed"), values = c("deeppink", "turquoise3", "goldenrod")) +
-  theme(axis.text.x = element_text(colour="black", vjust=0.5, size=14), 
-        axis.text.y = element_text(colour="black", vjust=0.5, size=14),
-        axis.title.x = element_text(face="bold", size=16),
-        axis.title.y = element_text(face="bold", size=16),
-        legend.title = element_text(size=12, face="bold"),
-        legend.text = element_text(size = 12),
-        legend.justification=c(1,0), legend.position=c(1.01, -0.01))
-
+        legend.justification=c(1,0), legend.position=c(1.01, -0.01)) 
 ```
 
 
 
 
-```{r heatmaps}
+
+### Faceting with ggplot 
+```{r heatmaps, fig.width=11, fig.height = 14, fig.align='center', echo = TRUE, warning = FALSE, message = FALSE, results ='hide'}
+#Load Data
 heatmap_data <- read.table("heatmap_data", sep = "\t", header = T)
 
+#Look at data
+head(heatmap_data)
+
+#Creating Facet Labels
 facet_labels <- function(var, value){
     value <- as.character(value)
     if (var=="Comparison") { 
@@ -112,7 +162,7 @@ facet_labels <- function(var, value){
 
 
 
-ggplot(heatmap_data, aes(Habitat, Phylum)) + geom_tile(aes(fill = Transformed)) + 
+heat1 <- ggplot(heatmap_data, aes(x = Habitat, y = Phylum)) + geom_tile(aes(fill = Transformed)) + 
   scale_fill_gradient2(name = "Odds-Ratio", mid = "gray", low = "darkorange", high = "blue4",  na.value = "white") + #scale_y_reverse() + 
   theme_bw(base_size = 12) + scale_x_discrete(expand = c(0, 0)) + scale_y_discrete(expand = c(0, 0)) + ylab(NULL) + 
   #geom_text(aes(fill = splif2$Transformed, label = splif2$Transformed, size = 8)) +
@@ -127,10 +177,13 @@ ggplot(heatmap_data, aes(Habitat, Phylum)) + geom_tile(aes(fill = Transformed)) 
         axis.title.y = element_text(face="bold", size=16),
         plot.margin = unit(c(0.5, 1, 0.5, 0.5), "cm"),
         strip.text.x = element_text(size=16, face = "bold", colour = "white"),
-        strip.background = element_rect(colour="black", fill = "black")); 
+        strip.background = element_rect(colour="black", fill = "black")); heat1
+```
 
 
-ggplot(abund, aes(y=PercentPhy , x=Phylum)) + #coord_cartesian(xlim = c(0, 30)) + 
+### Multiplotting with ggplot
+```{r putting together abudance and heatmap, fig.width=14, fig.height = 14, fig.align='center', echo = TRUE, warning = FALSE, message = FALSE, results ='hide'}
+relabun_plot<- ggplot(relabund_data, aes(y=PercentPhy , x=Phylum)) + #coord_cartesian(xlim = c(0, 30)) + 
   geom_bar(stat="identity", position=position_dodge(),fill = "magenta4", colour = "black") +
   ylab("Mean Relative \n Abundance (%)") + coord_flip() + theme_bw() + 
   geom_errorbar(aes(ymin = PercentPhy -se, ymax = PercentPhy +se), width = 0.25, color = "black") + 
@@ -140,47 +193,15 @@ ggplot(abund, aes(y=PercentPhy , x=Phylum)) + #coord_cartesian(xlim = c(0, 30)) 
         axis.text.y = element_blank(),
         axis.title.y = element_blank(),
         strip.background = element_rect(colour="black", fill = "black"),
-        plot.margin = unit(c(1.9, 2, 3.4, -1.25), "cm"), #top, right, bottom, left
+        plot.margin = unit(c(1.9, 2, 4.4, -1.25), "cm"), #top, right, bottom, left  #bottom = 3.4
         #panel.grid.minor=element_blank(), #panel.grid.major=element_blank(),
         legend.position="none")
+
+
+#http://stackoverflow.com/questions/20817094/how-to-control-width-of-multiple-plots-in-ggplot2
+grid.newpage()
+pushViewport(viewport(layout=grid.layout(1,2,width=c(0.8,0.2))))
+print(heat1, vp=viewport(layout.pos.row=1,layout.pos.col=1))
+print(relabun_plot, vp=viewport(layout.pos.row=1,layout.pos.col=2))
 ```
-
-
-
-
-```{r relative abundance}
-#write.table(sum_stats, "relabund_data", sep = "\t")
-relabund_data <- read.table("relabund_data", sep = "\t", header = T)
-
-relabund_data <- relabund_data[order(relabund_data$PercentPhy),]
-relabund_data <- subset(relabund_data, Phylum != "unclassified" & Phylum != "Synergistetes" & Phylum != "RsaHF231")
-phys <- as.character(seq_abund$Phylum)
-
-
-data$PercentPhy <- data$PercentPhyla * 100
-sum_stats <- summarySE(data, measurevar = "PercentPhy", groupvars = "Phylum")
-sum_stats <- subset(sum_stats, Phylum != "unclassified")
-#Order by the SeqAbundance
-relabund_data$Phylum <- factor(relabund_data$Phylum, levels = relabund_data$Phylum[order(relabund_data$PercentPhy)])
-abund <- subset(relabund_data,PercentPhy > 0.1)
-
-
-abund_plot <- ggplot(abund, aes(y=PercentPhy , x=Phylum))  +
-  #geom_boxplot(fill = "magenta4", colour = "black") + 
-  geom_bar(stat="identity", position=position_dodge(),  fill = "magenta4", colour = "black") +
-  theme_bw() + ggtitle("Phyla Above 0.1% in All Samples") +
-  xlab("Phylum") + ylab("Mean Relative Abundance (%)") +
-  geom_errorbar(aes(ymin = PercentPhy -se, ymax = PercentPhy +se), width = 0.25) + coord_flip() +
-  theme(axis.title.x = element_text(face="bold", size=16),
-        axis.text.x = element_text(angle=0, colour = "black", size=14),
-        axis.text.y = element_text(colour = "black", size=14),
-        axis.title.y = element_text(face="bold", size=16),
-        plot.title = element_text(face="bold", size = 20),
-        legend.title = element_text(size=12, face="bold"),
-        legend.text = element_text(size = 12),
-        legend.position="none"); abund_plot
-
-```
-
-
 
