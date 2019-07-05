@@ -182,7 +182,7 @@ heat1 <- ggplot(heatmap_data, aes(x = Habitat, y = Phylum)) + geom_tile(aes(fill
 
 
 ### Multiplotting with ggplot
-```{r putting together abudance and heatmap, fig.width=14, fig.height = 14, fig.align='center', echo = TRUE, warning = FALSE, message = FALSE, results ='hide'}
+```{r putting together abundance and heatmap, fig.width=14, fig.height = 14, fig.align='center', echo = TRUE, warning = FALSE, message = FALSE, results ='hide'}
 relabun_plot<- ggplot(relabund_data, aes(y=PercentPhy , x=Phylum)) + #coord_cartesian(xlim = c(0, 30)) + 
   geom_bar(stat="identity", position=position_dodge(),fill = "magenta4", colour = "black") +
   ylab("Mean Relative \n Abundance (%)") + coord_flip() + theme_bw() + 
